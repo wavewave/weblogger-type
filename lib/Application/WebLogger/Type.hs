@@ -3,7 +3,8 @@
              TypeFamilies, 
              TypeSynonymInstances, 
              OverloadedStrings, 
-             FlexibleInstances #-}
+             FlexibleInstances, 
+             RecordWildCards #-}
 
 module Application.WebLogger.Type where
 
@@ -12,70 +13,61 @@ import           Control.Monad.Reader
 import           Control.Monad.State
 import           Data.Acid 
 import           Data.Aeson
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as C
+import           Data.Foldable
 import           Data.Data
-import qualified Data.Map as M
 import           Data.SafeCopy
-import           Data.Text.Encoding as E
-import           Data.Typeable
-import           Data.UUID
+import           Data.Sequence
 
 -- | 
 data WebLoggerInfo = WebLoggerInfo { 
-  yesodcrud_uuid :: UUID, 
-  yesodcrud_name :: String
+  weblog_content :: String
 } deriving (Show,Typeable,Data)
 
+deriveSafeCopy 0 'base ''WebLoggerInfo
+
+
 -- |
-instance FromJSON UUID where
-  parseJSON x = do r <- return . fromString . C.unpack . E.encodeUtf8 =<< parseJSON x
-                   case r of 
-                     Nothing -> fail ("UUID parsing failed " ++ show x )
-                     Just uuid -> return uuid 
-
--- | 
-instance ToJSON UUID where
-  toJSON = toJSON . E.decodeUtf8 . C.pack . toString 
-
 instance FromJSON WebLoggerInfo where
-  parseJSON (Object v) = WebLoggerInfo <$>  v .: "uuid" <*> v .: "name"
+  parseJSON (Object v) = WebLoggerInfo <$>  v .: "content" 
+  parseJSON _ = mzero 
+
 
 -- |
 instance ToJSON WebLoggerInfo where
-  toJSON (WebLoggerInfo uuid name) = object [ "uuid" .= uuid , "name" .= name ] 
-
--- |
-instance SafeCopy UUID where 
-  putCopy uuid = contain $ safePut (toByteString uuid) 
-  getCopy = contain 
-            $ maybe (fail "cannot parse UUID") return . fromByteString 
-              =<< safeGet
-
-$(deriveSafeCopy 0 'base ''WebLoggerInfo)
+  toJSON WebLoggerInfo {..} = object [ "content" .= weblog_content ] 
 
 -- | 
-type WebLoggerInfoRepository = M.Map UUID WebLoggerInfo 
+type WebLoggerRepo = Seq WebLoggerInfo 
+
+
+instance FromJSON (Seq WebLoggerInfo) where
+  parseJSON v = fromList <$> parseJSON v
+
+instance ToJSON WebLoggerRepo where
+  toJSON = toJSON . toList
+
 
 -- |
-addWebLogger :: WebLoggerInfo -> Update WebLoggerInfoRepository WebLoggerInfo 
-addWebLogger minfo = do 
-  m <- get 
-  let (r,m') = M.insertLookupWithKey (\_k _o n -> n) (yesodcrud_uuid minfo) minfo m
-  put m'
+addLog :: WebLoggerInfo 
+             -> Update WebLoggerRepo WebLoggerInfo 
+addLog minfo = do 
+  modify (|> minfo) 
   return minfo
  
+{-
 -- |
 queryWebLogger :: UUID -> Query WebLoggerInfoRepository (Maybe WebLoggerInfo) 
 queryWebLogger uuid = do 
   m <- ask 
   return (M.lookup uuid m)
+-}
 
 -- |
-queryAll :: Query WebLoggerInfoRepository [WebLoggerInfo]
-queryAll = do m <- ask   
-              return (M.elems m)
+queryAllLog :: Query WebLoggerRepo WebLoggerRepo
+queryAllLog = do m <- ask   
+                 return m
 
+{-
 -- | 
 updateWebLogger :: WebLoggerInfo -> Update WebLoggerInfoRepository (Maybe WebLoggerInfo)
 updateWebLogger minfo = do 
@@ -95,6 +87,6 @@ deleteWebLogger uuid = do
       put m' 
       return r
     Nothing -> return Nothing
+-}
 
-
-$(makeAcidic ''WebLoggerInfoRepository [ 'addWebLogger, 'queryWebLogger, 'queryAll, 'updateWebLogger, 'deleteWebLogger] )
+makeAcidic ''WebLoggerRepo [ 'addLog, 'queryAllLog ]
