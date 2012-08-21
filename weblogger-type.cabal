@@ -1,7 +1,7 @@
-Name:		yesodcrud-type
+Name:		weblogger-type
 Version:	0.0
-Synopsis:	CRUD sample type 
-Description: 	CRUD sample type 
+Synopsis:	simple web logger type 
+Description: 	simple web logger type 
 License: 	BSD3
 License-file:	LICENSE
 Author:		Ian-Woo Kim
@@ -24,4 +24,4 @@ Library
                    bytestring == 0.9.*, 
                    text == 0.11.*, 
                    aeson==0.6.*
-  exposed-modules: Application.YesodCRUD.Type
+  exposed-modules: Application.WebLogger.Type

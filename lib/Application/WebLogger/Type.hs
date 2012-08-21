@@ -5,7 +5,7 @@
              OverloadedStrings, 
              FlexibleInstances #-}
 
-module Application.YesodCRUD.Type where
+module Application.WebLogger.Type where
 
 import           Control.Applicative 
 import           Control.Monad.Reader
@@ -22,7 +22,7 @@ import           Data.Typeable
 import           Data.UUID
 
 -- | 
-data YesodcrudInfo = YesodcrudInfo { 
+data WebLoggerInfo = WebLoggerInfo { 
   yesodcrud_uuid :: UUID, 
   yesodcrud_name :: String
 } deriving (Show,Typeable,Data)
@@ -38,12 +38,12 @@ instance FromJSON UUID where
 instance ToJSON UUID where
   toJSON = toJSON . E.decodeUtf8 . C.pack . toString 
 
-instance FromJSON YesodcrudInfo where
-  parseJSON (Object v) = YesodcrudInfo <$>  v .: "uuid" <*> v .: "name"
+instance FromJSON WebLoggerInfo where
+  parseJSON (Object v) = WebLoggerInfo <$>  v .: "uuid" <*> v .: "name"
 
 -- |
-instance ToJSON YesodcrudInfo where
-  toJSON (YesodcrudInfo uuid name) = object [ "uuid" .= uuid , "name" .= name ] 
+instance ToJSON WebLoggerInfo where
+  toJSON (WebLoggerInfo uuid name) = object [ "uuid" .= uuid , "name" .= name ] 
 
 -- |
 instance SafeCopy UUID where 
@@ -52,41 +52,41 @@ instance SafeCopy UUID where
             $ maybe (fail "cannot parse UUID") return . fromByteString 
               =<< safeGet
 
-$(deriveSafeCopy 0 'base ''YesodcrudInfo)
+$(deriveSafeCopy 0 'base ''WebLoggerInfo)
 
 -- | 
-type YesodcrudInfoRepository = M.Map UUID YesodcrudInfo 
+type WebLoggerInfoRepository = M.Map UUID WebLoggerInfo 
 
 -- |
-addYesodcrud :: YesodcrudInfo -> Update YesodcrudInfoRepository YesodcrudInfo 
-addYesodcrud minfo = do 
+addWebLogger :: WebLoggerInfo -> Update WebLoggerInfoRepository WebLoggerInfo 
+addWebLogger minfo = do 
   m <- get 
   let (r,m') = M.insertLookupWithKey (\_k _o n -> n) (yesodcrud_uuid minfo) minfo m
   put m'
   return minfo
  
 -- |
-queryYesodcrud :: UUID -> Query YesodcrudInfoRepository (Maybe YesodcrudInfo) 
-queryYesodcrud uuid = do 
+queryWebLogger :: UUID -> Query WebLoggerInfoRepository (Maybe WebLoggerInfo) 
+queryWebLogger uuid = do 
   m <- ask 
   return (M.lookup uuid m)
 
 -- |
-queryAll :: Query YesodcrudInfoRepository [YesodcrudInfo]
+queryAll :: Query WebLoggerInfoRepository [WebLoggerInfo]
 queryAll = do m <- ask   
               return (M.elems m)
 
 -- | 
-updateYesodcrud :: YesodcrudInfo -> Update YesodcrudInfoRepository (Maybe YesodcrudInfo)
-updateYesodcrud minfo = do 
+updateWebLogger :: WebLoggerInfo -> Update WebLoggerInfoRepository (Maybe WebLoggerInfo)
+updateWebLogger minfo = do 
   m <- get 
   let (r,m') = M.updateLookupWithKey (\_ _ -> Just minfo) (yesodcrud_uuid minfo) m
   put m'
   maybe (return Nothing) (const (return (Just minfo))) r 
 
 -- | 
-deleteYesodcrud :: UUID -> Update YesodcrudInfoRepository (Maybe YesodcrudInfo)
-deleteYesodcrud uuid = do 
+deleteWebLogger :: UUID -> Update WebLoggerInfoRepository (Maybe WebLoggerInfo)
+deleteWebLogger uuid = do 
   m <- get
   let r = M.lookup uuid m  
   case r of 
@@ -97,4 +97,4 @@ deleteYesodcrud uuid = do
     Nothing -> return Nothing
 
 
-$(makeAcidic ''YesodcrudInfoRepository [ 'addYesodcrud, 'queryYesodcrud, 'queryAll, 'updateYesodcrud, 'deleteYesodcrud] )
+$(makeAcidic ''WebLoggerInfoRepository [ 'addWebLogger, 'queryWebLogger, 'queryAll, 'updateWebLogger, 'deleteWebLogger] )
